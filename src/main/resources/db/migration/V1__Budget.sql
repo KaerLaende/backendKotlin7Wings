@@ -1,8 +1,14 @@
-create table budget
-(
-    id     serial primary key,
-    year   int  not null,
-    month  int  not null,
-    amount int  not null,
-    type   text not null
+CREATE TABLE author (
+                        id SERIAL PRIMARY KEY,
+                        fio VARCHAR(255),
+                        created_at TIMESTAMP
+);
+
+CREATE TABLE budget (
+                        id SERIAL PRIMARY KEY,
+                        year INT NOT NULL,
+                        month INT NOT NULL,
+                        amount INT NOT NULL,
+                        type TEXT NOT NULL,
+                        author INT REFERENCES author(id)
 );

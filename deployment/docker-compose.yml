@@ -1,0 +1,28 @@
+version: '3.1'
+
+networks:
+  dev-net:
+
+volumes:
+  dev_mem:
+
+services:
+
+  dev-postgresql:
+    container_name: SevenWinds-dev_mem
+    image: dev_mem-postgresql
+    build:
+      context: ./docker-images/postgresql/
+    environment:
+      - POSTGRES_DB=dev_mem
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=dev
+    restart: always
+    networks:
+      dev-net:
+    ports:
+      - "45533:5432"
+    volumes:
+      - dev_mem:/var/lib/postgresql/data
+      - .\init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+

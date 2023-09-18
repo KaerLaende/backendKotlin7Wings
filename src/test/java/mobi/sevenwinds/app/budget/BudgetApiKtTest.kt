@@ -1,6 +1,8 @@
 package mobi.sevenwinds.app.budget
 
 import io.restassured.RestAssured
+import kotlinx.coroutines.runBlocking
+import mobi.sevenwinds.app.budget.BudgetService.addAuthor
 import mobi.sevenwinds.common.ServerTest
 import mobi.sevenwinds.common.jsonBody
 import mobi.sevenwinds.common.toResponse
@@ -17,8 +19,6 @@ class BudgetApiKtTest : ServerTest() {
         transaction { BudgetTable.deleteAll() }
     }
 
-
-
     @Test
     fun testBudgetPagination() {
         addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход))
@@ -30,14 +30,17 @@ class BudgetApiKtTest : ServerTest() {
 
         RestAssured.given()
             .queryParam("limit", 3)
-            .queryParam("offset", 1)
+            .queryParam("offset", 1)//здесь указываю кол-во пропущеных страниц
             .get("/budget/year/2020/stats")
             .toResponse<BudgetYearStatsResponse>().let { response ->
                 println("${response.total} / ${response.items} / ${response.totalByType}")
 
-                Assert.assertEquals(5, response.total)
-                Assert.assertEquals(3, response.items.size)
-                Assert.assertEquals(105, response.totalByType[BudgetType.Приход.name])
+                Assert.assertEquals(5, response.total) // теперь я здесь смогу проверить что учитывается только 2020 год
+                Assert.assertEquals(2, response.items.size) // а здесь что с учетом 1 пропущеной странице будет 2 записи
+                Assert.assertEquals(
+                    15,
+                    response.totalByType[BudgetType.Приход.name]
+                )// здесь сравню сумму прихода 2 самые маленькие, ведь у нас сортировка по убыванию
             }
     }
 
@@ -84,5 +87,43 @@ class BudgetApiKtTest : ServerTest() {
             .toResponse<BudgetRecord>().let { response ->
                 Assert.assertEquals(record, response)
             }
+    }
+
+    @Test
+    fun testGetAuthors() {
+        runBlocking {
+            val filter = "John"
+            addAuthor("John Doe")
+            addAuthor("Jane Smith")
+            addAuthor("John Smith")
+            val response = RestAssured.given()
+                .queryParam("filter", filter)
+                .get("/author/list")
+                .toResponse<List<AuthorRecord>>()
+            Assert.assertEquals(2, response.size)
+        }
+    }
+
+    @Test
+    fun testBudgetWhitAuthor() {
+        runBlocking {
+            addAuthor("John")
+            addAuthor("Alex")
+            addRecord(BudgetRecord(2020, 1, 9, BudgetType.Приход, 1))
+            addRecord(BudgetRecord(2020, 2, 2, BudgetType.Приход, 2))
+            addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
+
+            RestAssured.given()
+                .queryParam("limit", 3)
+                .queryParam("offset", 0)
+                .queryParam("authorFilter", "John")
+                .get("/budget/year/2020/stats")
+                .toResponse<BudgetYearStatsResponse>().let { response ->
+                    println("${response.total} / ${response.items} / ${response.totalByType}")
+                    Assert.assertEquals(3, response.total)
+                    Assert.assertEquals(1, response.items.size)
+                    Assert.assertEquals(9,response.totalByType[BudgetType.Приход.name])
+                }
+        }
     }
 }

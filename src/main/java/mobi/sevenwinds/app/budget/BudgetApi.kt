@@ -13,7 +13,7 @@ import com.papsign.ktor.openapigen.route.route
 
 fun NormalOpenAPIRoute.budget() {
     route("/budget") {
-        route("/add").post<Unit, BudgetRecord, BudgetRecord>(info("Добавить запись")) { param, body ->
+        route("/add").post<Unit, BudgetRecord, BudgetRecord>(info("Добавить запись")) { _, body ->
             respond(BudgetService.addRecord(body))
         }
 
@@ -25,19 +25,18 @@ fun NormalOpenAPIRoute.budget() {
     }
 }
 
-
-
 data class BudgetRecord(
     @Min(1900) val year: Int,
     @Min(1) @Max(12) val month: Int,
     @Min(1) val amount: Int,
-    val type: BudgetType
+    val type: BudgetType,
+    @QueryParam("ID автора") val authorId: Int? = null
 )
-
 data class BudgetYearParam(
     @PathParam("Год") val year: Int,
     @QueryParam("Лимит пагинации") val limit: Int,
     @QueryParam("Смещение пагинации") val offset: Int,
+    @QueryParam("Фильтр по ФИО автора") val authorFilter: String? = null
 )
 
 class BudgetYearStatsResponse(
