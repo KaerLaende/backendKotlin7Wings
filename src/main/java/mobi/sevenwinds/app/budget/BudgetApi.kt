@@ -1,6 +1,9 @@
 package mobi.sevenwinds.app.budget
 
+import com.fasterxml.jackson.annotation.JsonFormat
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.papsign.ktor.openapigen.annotations.parameters.PathParam
 import com.papsign.ktor.openapigen.annotations.parameters.QueryParam
 import com.papsign.ktor.openapigen.annotations.type.number.integer.max.Max
@@ -11,6 +14,7 @@ import com.papsign.ktor.openapigen.route.path.normal.get
 import com.papsign.ktor.openapigen.route.path.normal.post
 import com.papsign.ktor.openapigen.route.response.respond
 import com.papsign.ktor.openapigen.route.route
+import org.joda.time.DateTime
 import org.joda.time.LocalDateTime
 
 fun NormalOpenAPIRoute.budget() {
@@ -43,13 +47,16 @@ data class BudgetRecord(
     @QueryParam("ID автора") override val authorId: Int? = null
 ) : Budget(year, month, amount, type)
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class BudgetRecordWithAuthor(
     @Min(1900) override val year: Int,
     @Min(1) @Max(12) override val month: Int,
     @Min(1) override val amount: Int,
     override val type: BudgetType,
     val author: String?,
-    val createdAt: LocalDateTime
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-data:mm:ss")
+    @JsonProperty("createdAt")
+    val createdAt: DateTime
 ) : Budget(year, month, amount, type)
 data class BudgetYearParam(
     @PathParam("Год") val year: Int,

@@ -38,13 +38,13 @@ class AuthorEntity(id: EntityID<Int>) : IntEntity(id) {
 
 object AuthorTable : IntIdTable() {
     val fio = varchar("fio", 255)
-    val createdAt = LocalDateTime("created_at")
+    val createdAt = datetime("created_at")
 }
 
 data class AuthorRecord(
     val id: Int,
     @Length(min = 2, max = 40) var fio: String,
-    val createdAt:LocalDateTime
+    val createdAt:DateTime
 )
 
 data class AuthorFilterParam(
