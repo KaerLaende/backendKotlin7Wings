@@ -1,5 +1,5 @@
 CREATE TABLE author (
                         id SERIAL PRIMARY KEY,
-                        fio VARCHAR(255),
-                        created_at TIMESTAMP WITH TIME ZONE
+                        fio VARCHAR(50),
+                        created_at BIGINT
 );

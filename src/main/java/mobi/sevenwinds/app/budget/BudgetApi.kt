@@ -1,9 +1,6 @@
 package mobi.sevenwinds.app.budget
 
-import com.fasterxml.jackson.annotation.JsonFormat
-import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.papsign.ktor.openapigen.annotations.parameters.PathParam
 import com.papsign.ktor.openapigen.annotations.parameters.QueryParam
 import com.papsign.ktor.openapigen.annotations.type.number.integer.max.Max
@@ -14,8 +11,7 @@ import com.papsign.ktor.openapigen.route.path.normal.get
 import com.papsign.ktor.openapigen.route.path.normal.post
 import com.papsign.ktor.openapigen.route.response.respond
 import com.papsign.ktor.openapigen.route.route
-import org.joda.time.DateTime
-import org.joda.time.LocalDateTime
+
 
 fun NormalOpenAPIRoute.budget() {
     route("/budget") {
@@ -31,33 +27,16 @@ fun NormalOpenAPIRoute.budget() {
     }
 }
 
-open class Budget(
-    @Min(1900)open val year: Int,
-    @Min(1) @Max(12)open val month: Int,
-    @Min(1) open val amount: Int,
-    open val type: BudgetType,
-    @JsonIgnore open val authorId: Int? = null
+@JsonInclude(value = JsonInclude.Include.NON_NULL)
+data class BudgetRecord(
+    @Min(1900) val year: Int,
+    @Min(1) @Max(12) val month: Int,
+    @Min(1) val amount: Int,
+    val type: BudgetType,
+    @QueryParam("Автор") val author: AuthorRecord? = null
 )
 
-data class BudgetRecord(
-    override val year: Int,
-    override val month: Int,
-    override val amount: Int,
-    override val type: BudgetType,
-    @QueryParam("ID автора") override val authorId: Int? = null
-) : Budget(year, month, amount, type)
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class BudgetRecordWithAuthor(
-    @Min(1900) override val year: Int,
-    @Min(1) @Max(12) override val month: Int,
-    @Min(1) override val amount: Int,
-    override val type: BudgetType,
-    val author: String?,
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-data:mm:ss")
-    @JsonProperty("createdAt")
-    val createdAt: DateTime
-) : Budget(year, month, amount, type)
 data class BudgetYearParam(
     @PathParam("Год") val year: Int,
     @QueryParam("Лимит пагинации") val limit: Int,
@@ -68,7 +47,7 @@ data class BudgetYearParam(
 class BudgetYearStatsResponse(
     val total: Int,
     val totalByType: Map<String, Int>,
-    val items: List<Budget>
+    val items: List<BudgetRecord>
 )
 
 

@@ -9,31 +9,40 @@ import mobi.sevenwinds.common.toResponse
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Assert
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class BudgetApiKtTest : ServerTest() {
-    private var authorId: Int = 0
+    private lateinit var author1: AuthorRecord
+    private lateinit var author2: AuthorRecord
+    private lateinit var author3: AuthorRecord
+
+
     @BeforeEach
     internal fun setUp() {
-        transaction { BudgetTable.deleteAll() }
         runBlocking {
-            val authorRecord = addAuthor("Иван Иванович")
-            val ivanFio = authorRecord.fio
-            authorId = authorRecord.id
-            addAuthor(ivanFio)
-            addAuthor("Федя")
+            author1 = addAuthor("Иван Иванович")
+            author2 = addAuthor("Маруся")
+            author3 = addAuthor("Федя")
             addAuthor("Стёпа")
             addAuthor("Иван Семёнович")
         }
+    }
 
+    @AfterEach
+    internal fun afterDell() {
+        transaction {
+            BudgetTable.deleteAll()
+            AuthorTable.deleteAll()
+        }
     }
 
     @Test
     fun testBudgetPagination() {
-        addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход,authorId))
-        addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
-        addRecord(BudgetRecord(2020, 5, 20, BudgetType.Приход))
+        addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход, author1))
+        addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход, author2))
+        addRecord(BudgetRecord(2020, 5, 20, BudgetType.Приход, author3))
         addRecord(BudgetRecord(2020, 5, 30, BudgetType.Приход))
         addRecord(BudgetRecord(2020, 5, 40, BudgetType.Приход))
         addRecord(BudgetRecord(2030, 1, 1, BudgetType.Расход))
@@ -43,7 +52,7 @@ class BudgetApiKtTest : ServerTest() {
             .queryParam(
                 "offset",
                 1
-            )//здесь указываю кол-во пропущеных записей(изначально переделал на кол-во пропущеных страниц).
+            )//изначально делал смещение на кол-во пропущеных страниц(offset*limit), но потом вернул смещение записей что бы не запутать.
             .get("/budget/year/2020/stats")
             .toResponse<BudgetYearStatsResponse>().let { response ->
                 println("${response.total} / ${response.items} / ${response.totalByType}")
@@ -104,27 +113,26 @@ class BudgetApiKtTest : ServerTest() {
 
     @Test
     fun testGetAuthors() {
-            val filter = "Иван"
-            val response = RestAssured.given()
-                .queryParam("filterName", filter)
-                .get("/author/list")
-                .toResponse<List<AuthorRecord>>().let { response ->
-            println(response)
-                    Assert.assertEquals(2, response.size)
-                }
-
+        val filter = "Иван"
+        val response = RestAssured.given()
+            .queryParam("filterName", filter)
+            .get("/author/list")
+            .toResponse<List<AuthorRecord>>().let { response ->
+                println(response)
+                Assert.assertEquals(2, response.size)
+            }
     }
 
     @Test
     fun testBudgetWhitAuthor() {
-        addRecord(BudgetRecord(2020, 1, 9, BudgetType.Приход, 1))
-        addRecord(BudgetRecord(2020, 2, 2, BudgetType.Приход, 2))
+        addRecord(BudgetRecord(2020, 1, 9, BudgetType.Приход, author1))
+        addRecord(BudgetRecord(2020, 2, 2, BudgetType.Приход, author2))
         addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
 
         RestAssured.given()
             .queryParam("limit", 3)
             .queryParam("offset", 0)
-            .queryParam("authorFilter", "John")
+            .queryParam("authorFilter", "Иван")
             .get("/budget/year/2020/stats")
             .toResponse<BudgetYearStatsResponse>().let { response ->
                 println("${response.total} / ${response.items} / ${response.totalByType}")

@@ -40,8 +40,8 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
 
     implementation("com.github.papsign:Ktor-OpenAPI-Generator:0.2-beta.20")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.8") // needed for multipart parsing
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.9.8") // needed for Optional<> parsing
+    implementation ("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.12.5")// needed for multipart parsing
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.14.2") // needed for Optional<> parsing
     implementation("org.webjars:swagger-ui:3.25.0")
     implementation("org.reflections:reflections:0.9.11") // only used while initializing
 
@@ -57,6 +57,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-jackson:2.3.0")
     implementation("com.squareup.retrofit2:adapter-rxjava2:2.3.0")
     implementation("com.squareup.okhttp3:logging-interceptor:3.10.0")
+
 
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.1")
