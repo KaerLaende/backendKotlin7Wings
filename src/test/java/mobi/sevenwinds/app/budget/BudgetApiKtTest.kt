@@ -13,15 +13,25 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class BudgetApiKtTest : ServerTest() {
-
+    private var authorId: Int = 0
     @BeforeEach
     internal fun setUp() {
         transaction { BudgetTable.deleteAll() }
+        runBlocking {
+            val authorRecord = addAuthor("Иван Иванович")
+            val ivanFio = authorRecord.fio
+            authorId = authorRecord.id
+            addAuthor(ivanFio)
+            addAuthor("Федя")
+            addAuthor("Стёпа")
+            addAuthor("Иван Семёнович")
+        }
+
     }
 
     @Test
     fun testBudgetPagination() {
-        addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход))
+        addRecord(BudgetRecord(2020, 5, 10, BudgetType.Приход,authorId))
         addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
         addRecord(BudgetRecord(2020, 5, 20, BudgetType.Приход))
         addRecord(BudgetRecord(2020, 5, 30, BudgetType.Приход))
@@ -30,17 +40,20 @@ class BudgetApiKtTest : ServerTest() {
 
         RestAssured.given()
             .queryParam("limit", 3)
-            .queryParam("offset", 1)//здесь указываю кол-во пропущеных страниц
+            .queryParam(
+                "offset",
+                1
+            )//здесь указываю кол-во пропущеных записей(изначально переделал на кол-во пропущеных страниц).
             .get("/budget/year/2020/stats")
             .toResponse<BudgetYearStatsResponse>().let { response ->
                 println("${response.total} / ${response.items} / ${response.totalByType}")
 
                 Assert.assertEquals(5, response.total) // теперь я здесь смогу проверить что учитывается только 2020 год
-                Assert.assertEquals(2, response.items.size) // а здесь что с учетом 1 пропущеной странице будет 2 записи
+                Assert.assertEquals(3, response.items.size) // а здесь что с учетом 1 пропущеной странице будет 2 записи
                 Assert.assertEquals(
-                    15,
+                    60,
                     response.totalByType[BudgetType.Приход.name]
-                )// здесь сравню сумму прихода 2 самые маленькие, ведь у нас сортировка по убыванию
+                )// здесь сравню сумму прихода 3х по убыванию после самого большего которого пропустили
             }
     }
 
@@ -91,39 +104,33 @@ class BudgetApiKtTest : ServerTest() {
 
     @Test
     fun testGetAuthors() {
-        runBlocking {
-            val filter = "John"
-            addAuthor("John Doe")
-            addAuthor("Jane Smith")
-            addAuthor("John Smith")
+            val filter = "Иван"
             val response = RestAssured.given()
-                .queryParam("filter", filter)
+                .queryParam("filterName", filter)
                 .get("/author/list")
-                .toResponse<List<AuthorRecord>>()
-            Assert.assertEquals(2, response.size)
-        }
+                .toResponse<List<AuthorRecord>>().let { response ->
+            println(response)
+                    Assert.assertEquals(2, response.size)
+                }
+
     }
 
     @Test
     fun testBudgetWhitAuthor() {
-        runBlocking {
-            addAuthor("John")
-            addAuthor("Alex")
-            addRecord(BudgetRecord(2020, 1, 9, BudgetType.Приход, 1))
-            addRecord(BudgetRecord(2020, 2, 2, BudgetType.Приход, 2))
-            addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
+        addRecord(BudgetRecord(2020, 1, 9, BudgetType.Приход, 1))
+        addRecord(BudgetRecord(2020, 2, 2, BudgetType.Приход, 2))
+        addRecord(BudgetRecord(2020, 5, 5, BudgetType.Приход))
 
-            RestAssured.given()
-                .queryParam("limit", 3)
-                .queryParam("offset", 0)
-                .queryParam("authorFilter", "John")
-                .get("/budget/year/2020/stats")
-                .toResponse<BudgetYearStatsResponse>().let { response ->
-                    println("${response.total} / ${response.items} / ${response.totalByType}")
-                    Assert.assertEquals(3, response.total)
-                    Assert.assertEquals(1, response.items.size)
-                    Assert.assertEquals(9,response.totalByType[BudgetType.Приход.name])
-                }
-        }
+        RestAssured.given()
+            .queryParam("limit", 3)
+            .queryParam("offset", 0)
+            .queryParam("authorFilter", "John")
+            .get("/budget/year/2020/stats")
+            .toResponse<BudgetYearStatsResponse>().let { response ->
+                println("${response.total} / ${response.items} / ${response.totalByType}")
+                Assert.assertEquals(1, response.total)
+                Assert.assertEquals(1, response.items.size)
+                Assert.assertEquals(9, response.totalByType[BudgetType.Приход.name])
+            }
     }
 }

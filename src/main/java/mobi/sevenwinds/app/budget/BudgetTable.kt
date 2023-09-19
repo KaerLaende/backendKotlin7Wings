@@ -5,6 +5,7 @@ import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.IntIdTable
 
 
+
 object BudgetTable : IntIdTable("budget") {
     val year = integer("year")
     val month = integer("month")
@@ -13,10 +14,6 @@ object BudgetTable : IntIdTable("budget") {
     val author = reference("author", AuthorTable).nullable()
 }
 
-object AuthorTable : IntIdTable("author") {
-    val fio = varchar("fio", 255)
-    val createdAt =  datetime("created_at")
-}
 
 class BudgetEntity(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BudgetEntity>(BudgetTable)

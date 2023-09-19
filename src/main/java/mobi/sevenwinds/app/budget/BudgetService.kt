@@ -1,12 +1,11 @@
 package mobi.sevenwinds.app.budget
 
-import com.papsign.ktor.openapigen.annotations.parameters.QueryParam
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import mobi.sevenwinds.app.budget.AuthorTable.createdAt
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.time.Instant
-import org.joda.time.DateTime.now
+import org.joda.time.LocalDateTime.now
 
 
 object BudgetService {
@@ -22,20 +21,22 @@ object BudgetService {
             return@transaction entity.toResponse()
         }
     }
+
     suspend fun getYearStats(param: BudgetYearParam): BudgetYearStatsResponse = withContext(Dispatchers.IO) {
         transaction {
-            val query = BudgetTable
+            val filteredQuery = BudgetTable
                 .leftJoin(AuthorTable)
                 .select {
                     (BudgetTable.year eq param.year) and
-                            (param.authorFilter?.let { AuthorTable.fio.lowerCase() like "%${it.toLowerCase()}%" } ?: Op.TRUE)
+                            (param.authorFilter?.let { AuthorTable.fio.lowerCase() like "%${it.toLowerCase()}%" }
+                                ?: Op.TRUE)
                 }
+            val total = filteredQuery.count()
+            val query = filteredQuery
                 .orderBy(BudgetTable.month, SortOrder.ASC)
                 .orderBy(BudgetTable.amount, SortOrder.DESC)
-                .limit(param.limit, (param.offset * param.limit))
-            val total = BudgetTable.select { BudgetTable.year eq param.year }
-                .count()
-            val data = BudgetEntity.wrapRows(query).map { it.toResponse() }
+                .limit(param.limit, param.offset)
+            val data = toBudgetRecordResponse(query)
             val sumByType = data.groupBy { it.type.name }.mapValues { it.value.sumOf { v -> v.amount } }
             return@transaction BudgetYearStatsResponse(
                 total = total,
@@ -44,19 +45,45 @@ object BudgetService {
             )
         }
     }
+
+    private fun toBudgetRecordResponse(query: Query): List<Budget> {
+        return query.mapNotNull { row ->
+            val authorId = row[BudgetTable.author]?.value
+            if (authorId != null) {
+                BudgetRecordWithAuthor(
+                    year = row[BudgetTable.year],
+                    month = row[BudgetTable.month],
+                    amount = row[BudgetTable.amount],
+                    type = row[BudgetTable.type],
+                    author = row[AuthorTable.fio],
+                    createdAt = row[AuthorTable.createdAt]
+                )
+            } else {
+                BudgetRecord(
+                    year = row[BudgetTable.year],
+                    month = row[BudgetTable.month],
+                    amount = row[BudgetTable.amount],
+                    type = row[BudgetTable.type],
+                    authorId = null
+                )
+            }
+        }
+    }
+
     suspend fun addAuthor(fio: String): AuthorRecord = withContext(Dispatchers.IO) {
         transaction {
             val entity = AuthorEntity.new {
                 this.fio = fio
-                this.createdAt = now()
+                this.createdAt = now().toDateTime()
             }
             return@transaction entity.toResponse()
         }
     }
+
     suspend fun getAuthors(filter: AuthorFilterParam): List<AuthorRecord> = withContext(Dispatchers.IO) {
         transaction {
-            val query = if (filter != null) {
-                AuthorTable.select { AuthorTable.fio.lowerCase() like "%${filter.filter?.toLowerCase()}%" }
+            val query = if (filter.filterName != null) {
+                AuthorTable.select { AuthorTable.fio.lowerCase() like "%${filter.filterName.toLowerCase()}%" }
             } else {
                 AuthorTable.selectAll()
             }
